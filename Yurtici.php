@@ -8,7 +8,7 @@ class YurtIci{
         "wsPassword" => "YK",
         "wsUserLanguage" => "TR",
         "payerCustData" => [
-            "invCustId" => "223271586",
+            "invCustId" => "111111111", // Yurtiçi tarafından verilen id
             "invAddressId" => ""
         ]
     ];
@@ -73,7 +73,7 @@ class YurtIci{
             "ngiDocumentKey"=>"", "specialFieldName"=>"", "specialFieldValue"=>""
         ],
         "custParamsVO" => [
-            "invCustIdArray"=>"223271586", "senderCustIdArray"=>"", "receiverCustIdArray"=>""
+            "invCustIdArray"=>"111111111", "senderCustIdArray"=>"", "receiverCustIdArray"=>""
         ],
         "EndOfCustParamsVO" => [
             "docIdArray"=>"", "startDate"=>"", "endDate"=>"", "dateParamType"=>"", "withCargoLifecycle"=>"1"
