@@ -1,14 +1,15 @@
 <?php
-// ÖDER TİPİ ENTEGRASYON
+
 class YurtIci{
 
-    private $soap, $urlMode;
+    private $soap, $urlMode, $self;
     private $data = [
         "wsUserName" => "YKTEST",
         "wsPassword" => "YK",
         "wsUserLanguage" => "TR",
+        "userLanguage" => "TR",
         "payerCustData" => [
-            "invCustId" => "111111111", // Yurtiçi kargo tarafından verilen id
+            "invCustId" => "",
             "invAddressId" => ""
         ]
     ];
@@ -20,9 +21,12 @@ class YurtIci{
         "reference" => [ // kargo sorgulama işlemleri için
             "test" => "http://testwebservices.yurticikargo.com:9090/KOPSWebServices/WsReportWithReferenceServices?wsdl",
             "live" => "http://webservices.yurticikargo.com:8080/KOPSWebServices/WsReportWithReferenceServices?wsdl"
+        ],
+        "self" => [ // Kendi anlaşması olan müşteriler için
+            "test" => "http://testwebservices.yurticikargo.com:9090/KOPSWebServices/ShippingOrderDispatcherServices?wsdl",
+            "live" => "http://webservices.yurticikargo.com:8080/KOPSWebServices/ShippingOrderDispatcherServices?wsdl"
         ]
     ];
-    // Gerekli alanlar
     private $neccessary = [
         "shipmentData" => [ // genel bilgiler
             "ngiDocumentKey", "cargoType", "totalCargoCount", "totalDesi", "totalWeight", "personGiver", "productCode"
@@ -47,9 +51,13 @@ class YurtIci{
         ],
         "EndOfCustParamsVO" => [ // kargo takip
             "fieldName", "fieldValueArray"
-        ]
+        ],
+        "createShipment" => [
+            "cargoKey","invoiceKey","receiverCustName","receiverAddress","receiverPhone1","cityName","townName","waybillNo"
+        ],
+        "queryShipment" => []
     ];
-    // Gerekli olmayan alanlar
+
     private $unneccessary = [
         "shipmentData" => [
             "description"=>"","selectedArrivalUnitId"=>"","selectedArrivalTransferUnitId"=>""
@@ -74,23 +82,30 @@ class YurtIci{
             "ngiDocumentKey"=>"", "specialFieldName"=>"", "specialFieldValue"=>""
         ],
         "custParamsVO" => [
-            "invCustIdArray"=>"111111111", "senderCustIdArray"=>"", "receiverCustIdArray"=>""
+            "invCustIdArray"=>"", "senderCustIdArray"=>"", "receiverCustIdArray"=>""
         ],
         "EndOfCustParamsVO" => [
             "docIdArray"=>"", "startDate"=>"", "endDate"=>"", "dateParamType"=>"", "withCargoLifecycle"=>"1"
-        ]
+        ],
+        "createShipment" => ["taxOfficeId"=>"", "cargoCount"=>1, "ttDocumentId"=>"", "dcSelectedCredit"=>"", "dcCreditRule"=>""],
+        "queryShipment" => []
     ];
 
-    function __construct($username=false, $password=false, $urlMode="test"){
-        if($username && $password){
+    function __construct($username=false, $password=false, $custId=false, $urlMode="test", $self="shipment"){
+        if($username && $password && $custId){
             $this->data["wsUserName"] = $username;
             $this->data["wsPassword"] = $password;
+            $this->data["payerCustData"]['invCustId'] = $custId;
+            $this->unneccessary['custParamsVO']['invCustIdArray'] = $custId;
+            $this->unneccessary['shipmentParamsData']['projectCustIdArray'] = $custId;
         }
         $this->urlMode = $urlMode;
-        $this->soap = new \SoapClient($this->urls['shipment'][$this->urlMode], array('trace' => true));
+        // Kobisi ve mağaza anlaşmasına göre istek atılacak url ataması ayarlanıyor
+        $this->self = $self=="self" ? "self" : "shipment";
+        $this->soap = new \SoapClient($this->urls[$this->self][$this->urlMode], array('trace' => true));
     }
 
-    // Sipariş oluşturma metodu. 
+    // KOBİSİ ANLAŞMASINI KULLANAN MAĞAZALAR İÇİN KULLANILACAK METHODLAR
     public function createNgiShipmentWithAddress($shipmentData=[], $docCargoDataArray=[], $XSenderCustAddress=[], $XConsigneeCustAddress=[]){
         if(!$this->arrayCheck($shipmentData, "shipmentData") && !$this->arrayCheck($docCargoDataArray, "docCargoDataArray") && !$this->arrayCheck($XSenderCustAddress, "XSenderCustAddress") && !$this->arrayCheck($XConsigneeCustAddress, "XConsigneeCustAddress")){
             return ["status"=>"error", "res"=>'Parametreleri eksiksiz giriniz!'];
@@ -157,7 +172,53 @@ class YurtIci{
         }
     }
 
-    // Gerekli olan alanların methoda gönderilip gönderilmediğini kontrol eden method
+    // KENDİ ANLAŞMASINI KULLANAN MAĞAZALAR İÇİN KULLANILACAK METHODLAR
+    // Kargo oluştur
+    public function createShipment($createShipment=[]){
+        if(!$this->arrayCheck($createShipment, "createShipment")){
+            return ["status"=>"error", "res"=>'Parametreleri eksiksiz giriniz!'];
+        }
+        $this->data['ShippingOrderVO'] = array_merge($createShipment, $this->unneccessary['createShipment']);
+        try{
+            $res = $this->soap->createShipment($this->data);
+            return ["status"=>"success", "res"=>$res];
+        }catch (Exception $e){
+            return ["status"=>"error", "res"=>$e->getMessage()];
+        }
+    }
+
+    // Kargo iptali
+    public function cancelShipment($saleID=false){
+        if(!$saleID){
+            return ["status"=>"error", "res"=>'Parametreleri eksiksiz giriniz!'];
+        }
+        $this->data['cargoKeys'] = $saleID;
+        try{
+            $res = $this->soap->cancelShipment($this->data);
+            return ["status"=>"success", "res"=>$res];
+        }catch (Exception $e){
+            return ["status"=>"error", "res"=>$e->getMessage()];
+        }
+    }
+
+    // Kargom nerede
+    public function queryShipment($saleID=false){
+        if(!$saleID){
+            return ["status"=>"error", "res"=>'Parametreleri eksiksiz giriniz!'];
+        }
+        $this->data['keys'] = $saleID;
+        $this->data['keyType'] = 0;
+        $this->data['addHistoricalData'] = true;
+        $this->data['onlyTracking'] = true;
+        $this->data['wsLanguage'] = "TR";
+        try{
+            $res = $this->soap->queryShipment($this->data);
+            return ["status"=>"success", "res"=>$res];
+        }catch (Exception $e){
+            return ["status"=>"error", "res"=>$e->getMessage()];
+        }
+    }
+
     private function arrayCheck($args, $key){
 		$result = false;
 		if(is_array($args)){
