@@ -40,6 +40,9 @@ class YurtIci{
         "XConsigneeCustAddress" => [ // alıcı bilgileri
             "consigneeCustName", "consigneeAddress", "cityId", "townName", "consigneeMobilePhone", "consigneeEmailAddress"
         ],
+        "codData"=>[
+            "ttInvoiceAmount"=>"","ttDocumentId"=>"","ttCollectionType"=>"","ttDocumentSaveType"=>"","dcSelectedCredit"=>"","dcCreditRule"=>""
+        ],
         "payerCustData"=>[ // Yurtiçikargo sisteminde kayıtlı ödeyecek Müşteri kodudur.
             "invCustId"=>"","invAddressId"=>""
         ],
@@ -74,9 +77,6 @@ class YurtIci{
         "specialFieldDataArray"=>[
             "specialFieldName"=>"","specialFieldValue"=>""
         ],
-        "codData"=>[
-            "ttInvoiceAmount"=>"","ttDocumentId"=>"","ttCollectionType"=>"","ttDocumentSaveType"=>"","dcSelectedCredit"=>"","dcCreditRule"=>""
-        ],
         "EndofXSenderCustAddress" => [],
         "shipmentParamsData" => [
             "ngiDocumentKey"=>"", "specialFieldName"=>"", "specialFieldValue"=>""
@@ -87,7 +87,7 @@ class YurtIci{
         "EndOfCustParamsVO" => [
             "docIdArray"=>"", "startDate"=>"", "endDate"=>"", "dateParamType"=>"", "withCargoLifecycle"=>"1"
         ],
-        "createShipment" => ["taxOfficeId"=>"", "cargoCount"=>1, "ttDocumentId"=>"", "dcSelectedCredit"=>"", "dcCreditRule"=>""],
+        "createShipment" => ["taxOfficeId"=>"", "cargoCount"=>1],
         "queryShipment" => []
     ];
 
@@ -106,7 +106,7 @@ class YurtIci{
     }
 
     // KOBİSİ ANLAŞMASINI KULLANAN MAĞAZALAR İÇİN KULLANILACAK METHODLAR
-    public function createNgiShipmentWithAddress($shipmentData=[], $docCargoDataArray=[], $XSenderCustAddress=[], $XConsigneeCustAddress=[]){
+    public function createNgiShipmentWithAddress($shipmentData=[], $docCargoDataArray=[], $XSenderCustAddress=[], $XConsigneeCustAddress=[], $codData=[]){
         if(!$this->arrayCheck($shipmentData, "shipmentData") && !$this->arrayCheck($docCargoDataArray, "docCargoDataArray") && !$this->arrayCheck($XSenderCustAddress, "XSenderCustAddress") && !$this->arrayCheck($XConsigneeCustAddress, "XConsigneeCustAddress")){
             return ["status"=>"error", "res"=>'Parametreleri eksiksiz giriniz!'];
         }
@@ -114,7 +114,7 @@ class YurtIci{
         $this->data["shipmentData"]["docCargoDataArray"] = $docCargoDataArray;
         $this->data["shipmentData"]["specialFieldDataArray"] = $this->unneccessary['specialFieldDataArray'];
         $this->data["shipmentData"]["complementaryProductDataArray"] = $this->unneccessary['complementaryProductDataArray'];
-        $this->data["shipmentData"]["codData"] = $this->unneccessary['codData'];
+        $this->data["shipmentData"]["codData"] = $codData;
         $this->data["XSenderCustAddress"] = array_merge($XSenderCustAddress, $this->unneccessary['XSenderCustAddress']);
         $this->data["XConsigneeCustAddress"] = array_merge($XConsigneeCustAddress, $this->unneccessary['XConsigneeCustAddress']);
         try{
