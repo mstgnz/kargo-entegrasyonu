@@ -6,9 +6,15 @@
     <div class="block-content p-10">
         <select name="cargo" class="form-control mb-1">
             <option value="">Seçiniz</option>
-            <?php foreach ($cargos as $k => $v) {
-                echo '<option value="'.$v['c']['slug'].'" data-id="'.$v['c']['id'].'">'.$v['c']['name'].'</option>';
-            }?>
+            <?php if($sale['shipping_address']['country_code'] == 'TR'){ ?>
+                <?php foreach ($cargos as $k => $v) {
+                    if($v['c']['id']!=8){
+                        echo '<option value="'.$v['c']['slug'].'" data-id="'.$v['c']['id'].'">'.$v['c']['name'].'</option>';
+                    }
+                }?>
+            <?php }else{
+                echo '<option value="upsyd" data-id="8">Ups Yurtdışı</option>';
+            } ?>
         </select>
         <div id="cargoForm"></div>
     </div>
@@ -21,8 +27,17 @@
         $('select[name=cargo]').on('change',function(e){
             var cargoId = $(this).find(':selected').data('id');
             cargoId = cargoId ? cargoId : "";
-            if(e.target.value=="mng"){
+            if(e.target.value=="aras"){
+                $('#cargoForm').html(`<?php echo $this->element('Sale/cargo/aras'); ?>`);
+                $('input[name="cargoID"]').val(cargoId);
+            }else if(e.target.value=="mng"){
                 $('#cargoForm').html(`<?php echo $this->element('Sale/cargo/mng'); ?>`);
+                $('input[name="cargoID"]').val(cargoId);
+            }else if(e.target.value=="ups"){
+                $('#cargoForm').html(`<?php echo $this->element('Sale/cargo/ups'); ?>`);
+                $('input[name="cargoID"]').val(cargoId);
+            }else if(e.target.value=="upsyd"){
+                $('#cargoForm').html(`<?php echo $this->element('Sale/cargo/upsyd'); ?>`);
                 $('input[name="cargoID"]').val(cargoId);
             }else if(e.target.value=="yurtici"){
                 $('#cargoForm').html(`<?php echo $this->element('Sale/cargo/yurtici'); ?>`);
@@ -87,6 +102,39 @@
             })
         }
     }
+    // Aras form
+    // Mng kargo parça list
+    arasParca = (e) => {
+        var no, Weight, VolumetricWeight,BarcodeNumber,ProductNumber, length, context;
+        $('#parcaModal').modal('show');
+        $('#addParca').on('click', function(e){
+            length = $('#parcaModal input[id="PieceDetailWeight"]').length;
+            length = 1; // koli olacağı için kaç ürün olduğu önemli değil koli desi bilgisi kafi
+            context='';
+            console.log($('#parcaModal input[name="PieceDetail"]'));
+            for (let i=0; i<length; i++) {
+                Weight = $('#parcaModal input[name="PieceDetails[PieceDetail]['+i+'][Weight]"]')[i].value
+                VolumetricWeight = $('#parcaModal input[name="PieceDetails[PieceDetail]['+i+'][VolumetricWeight]"]')[i].value
+                BarcodeNumber = $('#parcaModal input[name="PieceDetails[PieceDetail]['+i+'][BarcodeNumber]"]')[i].value
+                ProductNumber = $('#parcaModal input[name="PieceDetails[PieceDetail]['+i+'][ProductNumber]"]')[i].value
+                context += `${Weight}:${VolumetricWeight}:${BarcodeNumber}:${ProductNumber}:;`;
+            }
+            $('#parcaModal').modal('hide');
+            $('input[name="pKargoParcaList"]').val(context.split('undefined')[0]);
+        });
+    }
+    arasSubmit = (e) => {
+        var parcaList = $('input[name=pKargoParcaList]').val();
+        if(parcaList){
+            $('#arasForm').submit();
+        }else{
+            Swal.fire({
+                title : "Hata",
+                icon : "error",
+                text : "Parça listesi bilgileri boş bırakılamaz!"
+            })
+        }
+    }
     // Yurtiçi form
     yurticiSubmit = (e) => {
         $('#yurticiForm').submit();
@@ -99,6 +147,14 @@
     ngiCargoKey = (e) => {
         $('#ngiCargoKeyVal').val(e.target.value);
     }
+    // Ups form
+    upsSubmit = (e) => {
+        $('#upsForm').submit();
+    }
+    // Ups Yurtdışı form
+    upsYdSubmit = (e) => {
+        $('#upsYdForm').submit();
+    }
     // Kargom nerede
     cargoWhere = (e, cargo_id, sale_id, tracking_number) => {
         $('#cargo-where').append(` <i class="fa fa-spinner fa-spin"></i>`);
@@ -108,7 +164,14 @@
             data: { 'type':'where', 'cargoID': cargo_id, 'tracking_number': tracking_number },
             success: function(result){
                 $('#cargo-where i').remove();
-                if(cargo_id==5){
+                if(cargo_id==1){
+                    Swal.fire({
+                        title : "Kargom Nerede?",
+                        icon : "info",
+                        html : result,
+                        customClass: 'swal-wide',
+                    })
+                }else if(cargo_id==5){
                     mng = `<table class="table"><thead class="thead-dark"><tr><th scope="col">Başlık</th><th scope="col">Açıklama</th></tr></thead><tbody>`;
                     $.each(JSON.parse(result),function(k,v){
                         mng += `<tr><td style="text-align:left">${k}</td><td style="text-align:left">${v}</td></tr>`;
@@ -119,6 +182,26 @@
                         icon : "info",
                         html : mng,
                         customClass: 'swal-wide',
+                    })
+                }else if(cargo_id==9){
+                    ups = `<table class="table"><thead class="thead-dark"><tr><th scope="col">Başlık</th><th scope="col">Açıklama</th></tr></thead><tbody>`;
+                    $.each(JSON.parse(result),function(k,v){
+                        ups += `<tr><td style="text-align:left">${k}</td><td style="text-align:left">${v}</td></tr>`;
+                    });
+                    ups += '</tbody></table>';
+                    Swal.fire({
+                        title : "Kargom Nerede?",
+                        icon : "info",
+                        html : ups,
+                        customClass: 'swal-wide',
+                    })
+                }else if(cargo_id==8){
+                    result = JSON.parse(result)
+                    result = result.Response.ResponseStatusCode=="1" ? result.Response : result.Response.Error.ErrorDescription;
+                    Swal.fire({
+                        title : "Kargom Nerede?",
+                        icon : "info",
+                        text : result
                     })
                 }else{
                     Swal.fire({
@@ -135,7 +218,7 @@
         Swal.fire({
             title: 'Kargo İptal!',
             text: 'Kargo işlemini iptal etmek istediğinize emin misiniz?',
-            type: 'warning',
+            icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d26a5c',
             confirmButtonText: 'İşlemi Onayla',
@@ -162,7 +245,7 @@
         });
     }
     // Şablon - Gönderici ve alıcı bilgileri
-    cargoSablon = (e, cargo_id, sale_id) => {
+    cargoSablon = (e, cargo_id, sale_id, payAtDoor) => {
         $('#cargo-sablon').append(` <i class="fa fa-spinner fa-spin"></i>`);
         $.ajax({
             type: "POST",
@@ -171,24 +254,35 @@
             success: function(response){
                 $('#cargo-sablon i').remove();
                 response = JSON.parse(response);
-                sablon = `
-                <div id="print-sablon" class="card" style="text-align:left">
-                        <img src="data:image/png;base64,${response.logo}" alt="logo" style="margin-bottom:20px; width:100%" />
-                        <div class="card-body">
-                            <h5 class="card-title">Gönderici Bilgileri</h5>
-                            <p class="card-text">${response.cs.fullname}<br/>${response.cs.phone}<br/>${response.cs.address} <br />${response.cs.city_name} / ${response.cs.district_name}</p>
-                            <br/>
-                            <h5 class="card-title">Alıcı Bilgileri</h5>
-                            <p class="card-text">${response.ca.firstname} ${response.ca.lastname}<br/>${response.ca.phone}<br/>${response.ca.address} <br />${response.ca.city} / ${response.ca.district}</p>
-                            <img id="barcode" src="${textToBase64Barcode('<?php echo $sale['id']; ?>')}" />
-                </div></div>`;
-                if(cargo_id==5){ // mng ise sadece ZPL formatı barkodu basılır
-                    if(response.barkod!==""){
-                        sablon = `<div id="print-sablon" class="card"><img src="data:image/png;base64,${response.barkod}" style="width:100%" /></div>`;
-                    }else{
-                        sablon = 'Yetki hatası, Lütfen MNG ile iletişime geçiniz.';
-                    }
-                } 
+                payAtDoorText = "";
+                if(payAtDoor) payAtDoorText = '<p style="color:red">KAPIDA ÖDEME</p>';
+                sablon = "";
+                switch (cargo_id) {
+                    case 8:
+                        sablon = `<div id="print-sablon" class="card"><img src="data:image/png;base64,${response.cp.barkod_string}" style="width:100%" /></div>`;
+                    break;
+                    case 5: // mng ise sadece ZPL formatı barkodu basılır
+                        if(response.barkod!==""){
+                            sablon = `<div id="print-sablon" class="card"><img src="data:image/png;base64,${response.barkod}" style="width:100%" /></div>`;
+                        }else{
+                            sablon = 'Yetki hatası, Lütfen MNG ile iletişime geçiniz.';
+                        }
+                    break;
+                    default:
+                    sablon = `
+                    <div id="print-sablon" class="card" style="text-align:left">
+                            <center><img src="data:image/png;base64,${response.logo}" alt="logo" style="margin-bottom:20px; width:60%" /></center>
+                            <div class="card-body">
+                                <h5 class="card-title">Gönderici Bilgileri</h5>
+                                <p class="card-text">${response.cs.fullname}<br/>${response.cs.phone}<br/>${response.cs.address} <br />${response.cs.city_name} / ${response.cs.district_name}</p>
+                                <br/>
+                                <h5 class="card-title">Alıcı Bilgileri</h5>
+                                <p class="card-text">${response.ca.firstname} ${response.ca.lastname}<br/>${response.ca.phone}<br/>${response.ca.address} <br />${response.ca.city} / ${response.ca.district}</p>
+                                ${payAtDoorText}
+                                <img id="barcode" src="${textToBase64Barcode('<?php echo $sale['id']; ?>')}" />
+                    </div></div>`;
+                    break;
+                }
                 Swal.fire({
                     showCancelButton: true,
                     confirmButtonColor: '#d26a5c',
