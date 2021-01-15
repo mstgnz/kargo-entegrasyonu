@@ -1,7 +1,5 @@
 <?php
 
-<?php
-
 class UpsYd{
 
     private $userId;
